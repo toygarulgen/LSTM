@@ -82,6 +82,7 @@ def ENTSOE_API():
             print(df1)
         # print(len(ElectricityPrice))
     return(df1)
+
 #%%############SPLIT TRAIN TEST MODEL#############
 df = ENTSOE_API()
 df1 = EPIAS_API()
@@ -111,15 +112,13 @@ for iteration in range(len(newcountrycode)):
     values = values.astype('float32')
     scaler = MinMaxScaler(feature_range=(0, 1))
     dataset = scaler.fit_transform(values)
-    # Birkaç Değere Bakalım
-    dataset[0:5]
     
     # %80 Train % 20 Test
     TRAIN_SIZE = 0.80
     train_size = int(len(dataset) * TRAIN_SIZE)
     test_size = len(dataset) - train_size
     train, test = dataset[0:train_size, :], dataset[train_size:len(dataset), :]
-    print("Gün Sayıları (training set, test set): " + str((len(train), len(test))))
+    print("Numbers of Days (training set, test set): " + str((len(train), len(test))))
 
     def create_dataset(dataset, window_size = 48):
         data_X, data_Y = [], []
@@ -135,21 +134,21 @@ for iteration in range(len(newcountrycode)):
     test_X, test_Y = create_dataset(test, window_size)
     print("Original training data shape:")
     print(train_X.shape)
-    # Yeni verisetinin şekline bakalım.
+    
     train_X = np.reshape(train_X, (train_X.shape[0], 1, train_X.shape[1]))
     test_X = np.reshape(test_X, (test_X.shape[0], 1, test_X.shape[1]))
     print("New training data shape:")
     print(train_X.shape)
-#%%###############LSTM MODEL#####################
+#%%###############  LSTM MODEL  #####################
     def fit_model(train_X, train_Y, window_size = 48):
         model = Sequential()
     
-        # Modelin tek layerlı şekilde kurulacak.
+        
         model.add(LSTM(5, input_shape = (1, window_size)))
         model.add(Dense(1))
         model.compile(loss = 'mae', optimizer = 'adam')
     
-        #30 epoch yani 30 kere verisetine bakılacak.
+        
         model.fit(train_X, train_Y, epochs = 15, batch_size = 50, verbose = 2, validation_data=(test_X, test_Y), shuffle=False)
         # plot train and validation loss
         # pyplot.plot(history.history['loss'])
@@ -160,15 +159,15 @@ for iteration in range(len(newcountrycode)):
         # pyplot.legend(['train', 'validation'], loc='upper right')
         # pyplot.show()
         return(model)
-    # Fit the first model.
+    
     model1 = fit_model(train_X, train_Y, window_size)
 
 #%%#####################PREDICTION#########################
     def predict_and_score(model, X, Y):
-        # Şimdi tahminleri 0-1 ile scale edilmiş halinden geri çeviriyoruz.
+        
         pred = scaler.inverse_transform(model.predict(X))
         orig_data = scaler.inverse_transform([Y])
-        # Rmse değerlerini ölçüyoruz.
+        
         score = math.sqrt(mean_squared_error(orig_data[0], pred[:, 0]))
         return(score, pred)
 
@@ -178,11 +177,11 @@ for iteration in range(len(newcountrycode)):
     print("Test data score: %.2f RMSE" % rmse_test)
 
 #%%################PLOT####################
-    # Öğrendiklerinini tahminletip ekliyoruz.
+
     train_predict_plot = np.empty_like(dataset)
     train_predict_plot[:, :] = np.nan
     train_predict_plot[window_size:len(train_predict) + window_size, :] = train_predict
-    # Şimdi ise testleri tahminletiyoruz.
+
     test_predict_plot = np.empty_like(dataset)
     test_predict_plot[:, :] = np.nan
     test_predict_plot[len(train_predict) + (window_size * 2) + 1:len(dataset) - 1, :] = test_predict
@@ -193,19 +192,6 @@ for iteration in range(len(newcountrycode)):
     lowerLSTM[newcountrycode[iteration]] = lower_confidence_interval(df[newcountrycode[iteration]], TahminLSTM[newcountrycode[iteration]])
     upperLSTM[newcountrycode[iteration]] = upper_confidence_interval(df[newcountrycode[iteration]], TahminLSTM[newcountrycode[iteration]])
 ################
-# RMSEresult = rmse(labels.loc[26113:26280].values, test_predict_plot[25944:26111])
-# print(RMSEresult)
-# plt.figure(figsize = (15, 5))
-# plt.plot(labels.loc[26113:26280].values, label = "Actual Price (last 168 Hours)")
-# plt.plot(test_predict_plot[25944:26111], label = "Test set prediction (last 168 Hours)")
-# plt.xlabel("Hours")
-# plt.ylabel("Price (Euro/MWh)")
-# plt.title("Long Short-Term Memory (Real and Predicted Prices)")
-# plt.legend()
-# plt.savefig('plot.png', dpi=300)
-# plt.show()
-
-    # RMSEresult.append(rmse(labels.loc[26113:26280].values, test_predict_plot[25944:26111]))
     x = np.arange(0, 168)
     ax[iteration4, iteration5].plot(x, test_predict_plot[0][25943:26111], '.-', linewidth=3, color='tab:blue', label = "Test set prediction (last 168 Hours)")
     ax[iteration4, iteration5].plot(x, labels[newcountrycode[iteration]].loc[26112:26280], '.-', linewidth=3, color='tab:orange', label="Actual Price (last 168 Hours)")
@@ -221,8 +207,7 @@ for iteration in range(len(newcountrycode)):
         iteration4 = iteration4 + 1
         iteration5 = 0
 fig.tight_layout()
-# plt.savefig('LSTM_48.png')
-# plt.savefig('LSTM_48.eps')
+plt.savefig('LSTM_48.png')
 plt.show()
 
 
